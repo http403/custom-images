@@ -68,7 +68,7 @@ jobs:
             NEW=$(git diff --name-only origin/"$GITHUB_BASE_REF" "$GITHUB_SHA" -- containers | grep -E 'containers/.*/' | cut -d/ -f2 | uniq)
             echo "CONTAINER=$(echo "$NEW")" >> "$GITHUB_ENV"
           else
-            echo "Something went wrong. Event triggered not for this workflow. Abort"
+            echo "Something went wrong. Event triggered not for this workflow. Abort. (event="$GITHUB_EVENT")"
             exit 1
           fi
       - uses: docker/setup-qemu-action@v3
@@ -84,15 +84,24 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.CONTAINER }}
           tags: |
             type=raw,vaule=${{ env.DATE_CODE }}
-      - uses: docker/build-push-action@v5
+      - id: build
+        uses: docker/build-push-action@v5
         with:
           context: container/${{ env.CONTAINER }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         continue-on-error: true
-      - if: github.event_name == 'issue' && failure()
-        uses: andymckay/labeler@v1
-        with:
-          add-labels: "ci-failed"
-          remove-labels: "ci-build"
+      - name: Build failed
+        if: github.event_name == 'issue' && steps.build.outcome == 'failure'
+        run: |
+          gh issue edit ${{ github.event.issue.id }} --add-label "ci-failed" --remove-label "ci-build"
+          gh issue comment ${{ github.event.issue.id }} -b "Build failed. See ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sucessful build. Closing the issue.
+        if: github.event_name == 'issue' && steps.build.outcome == 'success'
+        run: gh issue close ${{ github.event.issue.id }} --comment "Successful build. Closing." -r "completed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
