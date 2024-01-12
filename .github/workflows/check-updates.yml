@@ -1,0 +1,52 @@
+name: Check for updates
+on: 
+  schedule: 
+   - cron: '0 0 * * *'
+
+jobs:
+  list-containers:
+    name: List all avaliable containers
+    runs-on: ubuntu-latest
+    outputs: 
+      containers: ${{ steps.list.outputs.containers }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          # Set the search directory
+          search="containers"
+
+          # Find containers with update.py
+          containers=""
+          for c in "$search"/*; do
+              if [ -d "$c" ] && [ -e "$c/update.py" ]; then
+                  containers="$containers\"$(basename "$c")\","
+              fi
+          done
+
+          # Strip the trailing comma and print the result in JSON format
+          echo containers="[$(echo "$containers" | sed 's/,$//')]" >> "$GITHUB_OUTPUT"
+
+
+  check-update:
+    name: Check each containers for updates
+    needs: list-containers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      metadata: read
+    strategy:
+      fail-fast: false
+      matrix:
+        container: ${{ fromJson(needs.list-containers.outputs.containers) }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pipenv'
+      - name: Install pipenv
+        run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+      - run: pipenv install
+      - run: pipenv run python containers/${{ matrix.container }}/update.py
