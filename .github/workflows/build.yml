@@ -30,7 +30,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      metadata: read
       packages: write
       pull-requests: read
     if: | 
