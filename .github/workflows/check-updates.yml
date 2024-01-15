@@ -13,20 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - id: list
         run: |
-          # Set the search directory
-          search="containers"
-
-          # Find containers with update.py
-          containers=""
-          for c in "$search"/*; do
-              if [ -d "$c" ] && [ -e "$c/update.py" ]; then
-                  containers="$containers\"$(basename "$c")\","
-              fi
-          done
-
-          # Strip the trailing comma and print the result in JSON format
-          echo containers="[$(echo "$containers" | sed 's/,$//')]" >> "$GITHUB_OUTPUT"
-
+          CONTAINERS_WITH_UPDATE_SCRIPT=$(find containers/ -type f -name "update.py" | cut -d/ -f2)
+          echo containers=$(echo "$CONTAINERS_WITH_UPDATE_SCRIPT" | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
   check-update:
     name: Check each containers for updates
