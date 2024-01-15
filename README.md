@@ -5,26 +5,23 @@ A mono repo for all my customized container images needs with (attempted) automa
 This is my first time of building a monorepo with a CI/CD so things can break from time to time.
 
 ## Versioning/Tagging
-> **WARN**: There will not be a tag nor release on GH as the update process doesn't change the code. The version/tag here refers to the resulting images.
+> **WARN**: There will not be a tag nor release on GH. The version/tag here refers to the resulting images.
 
-Since a container can involves multiple components, and each components can have a different scheme of versioning/progress. The version/tag of the container images will be date coded instead, on the day it is build. By default, the update should be done once a day so conflicting tags shouldn't be a problem. Even if there is a conflict, the newer version shall overwrite the older version in the same day. Not ideal but should be accpetable. 
+Since a container can involves multiple components, and each components can have a different scheme of versioning/progress. The version/tag of the container images will be date coded instead, on the day it is build. By default, the update should be performed daily so tag conflict shouldn't be a problem. Even if there is a conflict, the newer version shall overwrite the older version in the same day. Not ideal but should be accpetable. 
 
 ## How this works
 
 ### Auto Update
-Since there won't be releases (see [Versioning/Tagging](#versioningtagging)), and there is a need to keep track of componets versions being used in each image, I hacked up a solution that's a bit convoluted that uses issues.
-
 1. A workflow on schedule that will check for updates
     - It first list out all the containers and filter the one have `update.py` in it.
     - It then use matrices to create a job for each container and runs the `update.py` script.
-2. When a update is detected in the script, a new issue with the container name (i.e. the directory name), and `ci-build` tagged.
-    - The script look in the closed issues with the correct title and tag
-    - Extract the componets version information from the last issue (the biggest issue number) in the matching set
-3. Another workflow with looks for all open issues 
-    - It first filters for those have `ci-build` label but excluding `ci-failed`
-    - Then it uses the Dockerfile within to build the container
+2. The script will run through the checks, and if there is an update, it will update the `version.yml` within the directory, and open a pull request.
+3. Another workflow (`build.yml`) will triggered by the pull request.
+    - `build.py` will be invoked and build the image
+4. If success, auto merge and close the PR, and trigger `build.yml` again.
+    - `build.py` will be invoked first the have the image ready
+    - then `deploy.py` will be invoked and pushes the image to defined registries.
 
 ### New Container
-1. Anyone make a PR containing exactly one container defination and tag with `new-container`
-2. The build workflow will pick up and make a test build, pass then merge which will be published to the packages
-
+1. Make a PR that modify the `containers` directory. Each PR can contains more than one container definitions but recommend to keep at one.
+2. The build workflow will pick up and the rest is similar to how auto update does starting at step 3. However, it won't auto merge. It must be approved manually.
