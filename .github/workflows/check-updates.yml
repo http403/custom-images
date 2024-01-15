@@ -21,8 +21,8 @@ jobs:
     needs: list-containers
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      issues: write
+      contents: write
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
