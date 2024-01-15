@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: list
         run: |
-          CONTAINERS_WITH_UPDATE_SCRIPT=$(find containers/ -type f -name "update.py" | cut -d/ -f2)
+          CONTAINERS_WITH_UPDATE_SCRIPT=$(find containers/ -type f -name "update.py" | cut -d/ -f2 | uniq )
           echo containers=$(echo "$CONTAINERS_WITH_UPDATE_SCRIPT" | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
 
   check-update:
